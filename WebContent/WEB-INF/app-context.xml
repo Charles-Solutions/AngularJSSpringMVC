@@ -1,0 +1,317 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:task="http://www.springframework.org/schema/task"
+	xmlns:tx="http://www.springframework.org/schema/tx"
+	xmlns:mvc="http://www.springframework.org/schema/mvc"
+	xmlns:jms="http://www.springframework.org/schema/jms"
+	xmlns:security="http://www.springframework.org/schema/security"
+	xmlns:aop="http://www.springframework.org/schema/aop"
+	xmlns:lang="http://www.springframework.org/schema/lang"
+	xmlns:jdbc="http://www.springframework.org/schema/jdbc"
+	xsi:schemaLocation="http://www.springframework.org/schema/jdbc http://www.springframework.org/schema/jdbc/spring-jdbc-4.0.xsd
+		http://www.springframework.org/schema/lang http://www.springframework.org/schema/lang/spring-lang-4.0.xsd
+		http://www.springframework.org/schema/jms http://www.springframework.org/schema/jms/spring-jms-4.0.xsd
+		http://www.springframework.org/schema/mvc http://www.springframework.org/schema/mvc/spring-mvc-4.0.xsd
+		http://www.springframework.org/schema/task http://www.springframework.org/schema/task/spring-task-4.0.xsd
+		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-4.0.xsd
+		http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-4.0.xsd
+		http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-4.0.xsd
+		http://www.springframework.org/schema/security http://www.springframework.org/schema/security/spring-security-3.2.xsd
+		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.0.xsd">
+      
+    <context:annotation-config/>
+	
+	<!-- Scans the classpath of this application for @Components to deploy as beans -->
+	<context:component-scan base-package="ibm.ob"/>	
+	
+	<!-- Activates @Scheduled and @Async annotations for scheduling -->
+    <task:annotation-driven />
+
+	<!-- ${property}-->
+	<context:property-placeholder location="/WEB-INF/app-config.properties" />		
+	
+	
+	<!-- Hibernate Configuration -->	
+	<tx:annotation-driven transaction-manager="hibernateTransactionManager" proxy-target-class="true"/>	
+	
+	<tx:advice id="txAdvice" transaction-manager="hibernateTransactionManager" >      
+        <tx:attributes>     
+          <tx:method name="get*" read-only="true"/>       
+          <tx:method name="load*" read-only="true"/>       
+          <tx:method name="create*" propagation="REQUIRED"/>
+          <tx:method name="save*" propagation="REQUIRED"/>
+          <tx:method name="update*" propagation="REQUIRED"/>
+          <tx:method name="delete*" propagation="REQUIRED"/>                            
+        </tx:attributes>         
+    </tx:advice>  
+    
+    <aop:config>       
+         <aop:pointcut id="webServiceOperations" expression="execution(* ibm.ob.web.restful.services.*..*WebService*.*(..))" /> 
+         <aop:advisor id="webServiceAdvisor" advice-ref="txAdvice" pointcut-ref="webServiceOperations"/>                
+    </aop:config> 
+	
+	 <bean id="hibernateTransactionManager" class="org.springframework.orm.hibernate4.HibernateTransactionManager">
+        <property name="sessionFactory" ref="sessionFactory" />       
+    </bean> 	
+    
+    <bean id="sessionFactory" class="org.springframework.orm.hibernate4.LocalSessionFactoryBean">
+        
+        <property name="dataSource" ref="appDataSource" />
+        
+        <property name="hibernateProperties">
+            <props>
+                <prop key="hibernate.dialect">${app.hibernate.dialect}</prop>
+                <prop key="hibernate.hbm2ddl.auto">${app.hibernate.hbm2ddl.auto}</prop>
+                <prop key="hibernate.show_sql">${app.hibernate.show_sql}</prop>
+                <prop key="hibernate.format_sql">${app.hibernate.format_sql}</prop>             
+            </props>
+        </property> 
+        
+        <property name="packagesToScan">
+           <list>
+              <value>ibm.ob.entities</value>
+           </list>
+        </property>        
+        
+        <property name="mappingLocations">
+            <list>
+              <value>classpath: ibm/ob/hibernate/queries/*.hbm.xml</value>
+            </list>
+        </property>     
+    </bean>  
+    
+    <!-- App DataSource -->
+	<bean id="appDataSource" class="org.apache.commons.dbcp2.BasicDataSource">
+		<property name="url">
+			<value>${app.db.connection.url}</value>
+		</property>
+		<property name="driverClassName">
+			<value>${app.db.connection.driverClassName}</value>
+		</property>
+		<property name="username">
+			<value>${app.db.connection.username}</value>
+		</property>
+		<property name="password">
+			<value>${app.db.connection.password}</value>
+		</property>		
+		<property name="initialSize">
+			<value>${app.dbcp.initialSize}</value>
+		</property>
+		
+		<property name="maxIdle">
+			<value>${app.dbcp.maxIdle}</value>
+		</property>
+		<property name="minIdle">
+			<value>${app.dbcp.minIdle}</value>
+		</property>		
+	</bean> 	
+	
+	 <!-- External DataSource -->
+	<bean id="extDB2DataSource" class="org.apache.commons.dbcp2.BasicDataSource">
+		<property name="url">
+			<value>${ext.db2.connection.url}</value>
+		</property>
+		<property name="driverClassName">
+			<value>${ext.db2.connection.driverClassName}</value>
+		</property>
+		<property name="username">
+			<value>${ext.db2.connection.username}</value>
+		</property>
+		<property name="password">
+			<value>${ext.db2.connection.password}</value>
+		</property>		
+	</bean>    
+	
+<!-- 	<jdbc:initialize-database data-source="dataSource" ignore-failures="DROPS"> -->
+<!--     <jdbc:script location="classpath:testdb/schema.sql" /> -->
+<!--     <jdbc:script location="classpath:testdb/data.sql" /> -->
+<!-- </jdbc:initialize-database> -->    	
+    	
+    <!-- Mail Configuration -->
+    <bean id="javaMailSender" class="org.springframework.mail.javamail.JavaMailSenderImpl">		
+		<property name="host" value="${mail.host}"/>
+		<property name="username" value="${mail.username}"></property>
+		<property name="password" value="${mail.password}"></property>
+		<property name="port" value="${mail.port}" />
+		<property name="javaMailProperties">
+		    <props>
+		       <prop key="auth">${mail.auth}</prop>
+		       <prop key="starttls">${mail.starttls.enable}</prop>
+		       <prop key="from">${mail.from}</prop>
+		    </props>
+		</property>		
+	</bean>	
+	
+	
+	<bean id="velocityEngine" class="org.springframework.ui.velocity.VelocityEngineFactoryBean">	  	   
+	   <property name="velocityProperties">	       
+			<value>
+				resource.loader=class
+				class.resource.loader.class=org.apache.velocity.runtime.resource.loader.ClasspathResourceLoader
+				velocimacro.library=
+			</value>
+		</property>
+	</bean>  
+	
+	 <!-- IBM MQ Configuration -->	
+<!-- 	<jms:listener-container container-type="default" connection-factory="jmsQueueConnectionFactory" acknowledge="auto"> -->
+<!--           <jms:listener destination="${mq.queue}" ref="messageListener" method="onMessage"/> -->
+<!--     </jms:listener-container> -->
+	
+<!-- 	<bean id="mqConnectionFactory" class="com.ibm.mq.jms.MQQueueConnectionFactory"> -->
+<!-- 		<property name="hostName"> -->
+<!-- 			<value>${mq.queue.hostname}</value> -->
+<!-- 		</property> -->
+<!-- 		<property name="port"> -->
+<!-- 			<value>${mq.queue.port}</value> -->
+<!-- 		</property> -->
+<!-- 		<property name="queueManager"> -->
+<!-- 			<value>${mq.queue.manager}</value> -->
+<!-- 		</property> -->
+<!-- 		<property name="transportType"> -->
+<!-- 			<value>${mq.queue.transportType}</value> -->
+<!-- 		</property> -->
+<!-- 	</bean> -->
+	
+<!-- 	<bean id="jmsQueueConnectionFactory" -->
+<!-- 		class="org.springframework.jms.connection.SingleConnectionFactory"> -->
+<!-- 		<property name="targetConnectionFactory"> -->
+<!-- 			<ref bean="mqConnectionFactory" /> -->
+<!-- 		</property> -->
+<!-- 		<property name="pubSubDomain"> -->
+<!-- 			<value>${mq.queue.pubSubDomain}</value> -->
+<!-- 		</property> -->
+<!-- 	</bean> -->
+
+	
+<!-- 	<bean id="jmsDestinationResolver" -->
+<!-- 		class="org.springframework.jms.support.destination.DynamicDestinationResolver"> -->
+<!-- 	</bean> -->
+	
+<!-- 	<bean id="jmsQueueTemplate" class="org.springframework.jms.core.JmsTemplate"> -->
+<!-- 		<property name="connectionFactory"> -->
+<!-- 			<ref bean="jmsQueueConnectionFactory" /> -->
+<!-- 		</property> -->
+<!-- 		<property name="destinationResolver"> -->
+<!-- 			<ref bean="jmsDestinationResolver" /> -->
+<!-- 		</property> -->
+<!-- 		<property name="pubSubDomain"> -->
+<!-- 			<value>${mq.queue.pubSubDomain}</value> -->
+<!-- 		</property> -->
+<!-- 		<property name="receiveTimeout"> -->
+<!-- 			<value>${mq.queue.receiveTimeout}</value> -->
+<!-- 		</property> -->
+<!-- 	</bean> -->
+	
+	
+	<!-- Web Config -->  
+	<mvc:annotation-driven /> 
+	
+	<mvc:resources location="/WEB-APP/resources/" mapping="/WEB-APP/resources/**"/>	
+	 
+    <bean name="handlerAdapter" class="org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter">
+        <property name="webBindingInitializer">
+            <bean class="org.springframework.web.bind.support.ConfigurableWebBindingInitializer">
+                <property name="conversionService" ref="conversionService"></property>
+                <property name="validator">
+                    <bean class="org.springframework.validation.beanvalidation.LocalValidatorFactoryBean"/>
+                </property>
+            </bean>
+        </property>
+        <property name="messageConverters">
+            <list>
+                <bean class="org.springframework.http.converter.ByteArrayHttpMessageConverter"/>
+                <bean class="org.springframework.http.converter.xml.Jaxb2RootElementHttpMessageConverter"/>
+                <bean class="org.springframework.http.converter.json.MappingJackson2HttpMessageConverter"/>
+                <bean class="org.springframework.http.converter.StringHttpMessageConverter"></bean>
+                <bean class="org.springframework.http.converter.ResourceHttpMessageConverter"></bean>
+                <bean class="org.springframework.http.converter.xml.SourceHttpMessageConverter"></bean>                
+            </list>
+        </property>
+    </bean>
+
+    <bean id="conversionService" class="org.springframework.context.support.ConversionServiceFactoryBean" />
+
+    <bean name="handlerMapping" class="org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping">
+        <property name="useTrailingSlashMatch" value="true"></property>
+    </bean>
+
+    <bean id="viewResolver" class="org.springframework.web.servlet.view.InternalResourceViewResolver" >
+        <property name="prefix">
+            <value>/WEB-APP/jsp/</value>
+        </property>
+        <property name="suffix">
+            <value>.jsp</value>
+        </property>
+    </bean>
+    
+    
+    <!-- App Security -->     
+    <security:global-method-security pre-post-annotations="enabled">        
+    </security:global-method-security>
+    
+    <security:authentication-manager alias="authenticationManager">
+        <security:authentication-provider>
+             <security:password-encoder ref="passwordEncoder" />
+             <security:user-service>
+                 <security:user name="alex" password="F7qgI9zK3PdRKkktS2bFe75xnaRaI4aHxQI0oKVJj4eOZ9YTc7EZltPOVrU5ITEt" authorities="USER"/>
+                 <security:user name="alber" password="ieDSTg7j70jPbpfvFQAfvNZDwDPDXiYES5TpIAXKmZpQu05Yuu0soDW/Xo4yIx8R" authorities="USER, ADMIN"/>
+             </security:user-service>
+        </security:authentication-provider>
+    </security:authentication-manager>
+    
+    <security:http use-expressions="true" auto-config="true" >        
+        <security:intercept-url pattern="/WEB-APP/resources/**" access="permitAll"/>
+        <security:intercept-url pattern="/webservice/public/**" access="permitAll" />  
+        <security:intercept-url pattern="/" access="hasRole('USER')" />               
+        <security:intercept-url pattern="/webservice/**" access="hasRole('USER')" />    
+        <security:intercept-url pattern="/app/**" access="hasRole('USER')" />       
+        <security:intercept-url pattern="/**" access="denyAll" />
+        <security:http-basic/>       
+<!--    <security:session-management session-authentication-strategy-ref="" />      -->
+    </security:http> 
+    
+     <bean id="jasyptPasswordEncryptor" class="org.jasypt.util.password.StrongPasswordEncryptor"/>     
+     
+     <bean id="passwordEncoder" class="org.jasypt.spring.security3.PasswordEncoder">        
+        <property name="passwordEncryptor" ref="jasyptPasswordEncryptor" />                 
+     </bean>  
+    
+    
+    <!-- Activiti BPM Engine  -->    
+<!--     <bean id="processEngineConfiguration" class="org.activiti.spring.SpringProcessEngineConfiguration">	    -->
+<!-- 	    <property name="dataSource" ref="appDataSource"></property>   -->
+<!-- 	    <property name="databaseType" ref="${app.db.type}"></property> 	    -->
+<!-- 	    <property name="databaseSchemaUpdate" value="true" />	 -->
+	    
+<!-- 	    <property name="transactionManager" ref="activitiTransactionManager"></property>     -->
+	   
+<!-- 	    <property name="jobExecutorActivate" value="false" /> -->
+	    
+<!-- 	    <property name="mailServerHost" value="${mail.host}" />  -->
+<!-- 	    <property name="mailServerPort" value="${mail.port}" />    -->
+<!-- 	    <property name="mailServerDefaultFrom" value="${mail.from}" /> -->
+<!-- 	    <property name="mailServerUsername" value="${mail.username}" /> -->
+<!-- 	    <property name="mailServerPassword" value="${mail.password}" />	 -->
+	    
+<!-- 	    <property name="deploymentResources" value="classpath*:/ibm/ob/activiti/bpmn/autodeploy.*.bpmn" /> -->
+<!-- 	    <property name="deploymentMode" value="default" />     -->
+<!--     </bean> -->
+
+<!-- 	<bean id="processEngine" class="org.activiti.spring.ProcessEngineFactoryBean"> -->
+<!-- 	  <property name="processEngineConfiguration" ref="processEngineConfiguration" /> -->
+<!-- 	</bean> -->
+	
+<!-- 	<bean id="activitiTransactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager"> -->
+<!--       <property name="dataSource" ref="appDataSource" />        -->
+<!--     </bean> -->
+
+<!-- 	<bean id="repositoryService" factory-bean="processEngine" factory-method="getRepositoryService" /> -->
+<!--     <bean id="runtimeService" factory-bean="processEngine" factory-method="getRuntimeService" /> -->
+<!--     <bean id="taskService" factory-bean="processEngine" factory-method="getTaskService" /> -->
+<!--     <bean id="historyService" factory-bean="processEngine" factory-method="getHistoryService" /> -->
+<!--     <bean id="managementService" factory-bean="processEngine" factory-method="getManagementService" />	  -->
+	
+</beans>

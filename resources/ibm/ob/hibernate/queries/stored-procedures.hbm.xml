@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE hibernate-mapping PUBLIC "-//Hibernate/Hibernate Mapping DTD 3.0//EN" "http://hibernate.sourceforge.net/hibernate-mapping-4.0.dtd" >
+
+<hibernate-mapping>
+	<sql-query name="selectAllEmployees_SP" callable="true">
+	    <return alias="emp" class="Employment">
+	        <return-property name="employee" column="EMPLOYEE"/>
+	        <return-property name="employer" column="EMPLOYER"/>
+	        <return-property name="startDate" column="STARTDATE"/>
+	        <return-property name="endDate" column="ENDDATE"/>
+	        <return-property name="regionCode" column="REGIONCODE"/>
+	        <return-property name="id" column="EID"/>
+	        <return-property name="salary">
+	            <return-column name="VALUE"/>
+	            <return-column name="CURRENCY"/>
+	        </return-property>
+	    </return>
+        { ? = call selectAllEmployments() }
+   </sql-query>
+</hibernate-mapping>

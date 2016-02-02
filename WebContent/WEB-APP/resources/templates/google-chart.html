@@ -1,0 +1,17 @@
+<div id="google-chart">  
+	<p>This is an example about how to use the Google Chart API with AngularJS</p>
+	
+	<div>
+		<label for="singleSelect"> Select Chart Type: </label><br>
+	    <select name="singleSelect" ng-model="chartTypeSelected" ng-change="loadChart()" >	      
+	      <option value="PieChart">PieChart</option>
+	      <option value="BarChart">BarChart</option>
+	      <option value="ColumnChart">ColumnChart</option>
+	      <option value="Gauge">Gauge</option>
+	    </select>
+	</div>		
+	
+	<div google-chart chart="chartObject" style="height:600px; width:100%;"></div>
+	
+	  
+</div>
